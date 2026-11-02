@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Edit Run{% endblock %}
+{% block content %}
+<section class="edit-page reveal">
+    <a class="back-link" href="{{ url_for('index') }}">← Back to dashboard</a>
+    <div class="section-heading"><p class="eyebrow"><span class="eyebrow-line"></span> REFINE THE RECORD</p><h1>Edit this run.</h1><p>Small details matter. Keep your log accurate.</p></div>
+    <div class="run-form-card edit-card">
+        <div class="form-card-top"><span class="form-number">EDIT</span><span class="form-status"><i></i> SESSION #{{ run.id }}</span></div>
+        <form method="post">
+            <div class="form-row">
+                <div class="field field-wide"><label for="run_date">Date</label><input type="date" id="run_date" name="run_date" value="{{ run.run_date }}" required></div>
+                <div class="field field-wide"><label for="type_id">Run type</label><select id="type_id" name="type_id" required>{% for type in run_types %}<option value="{{ type.id }}" {% if type.id == run.type_id %}selected{% endif %}>{{ type.name }}</option>{% endfor %}</select></div>
+            </div>
+            <div class="field"><label>Distance</label><div class="distance-grid">{% for value, label in [("0.4", "400 m"), ("0.8", "800 m"), ("1.0", "1K"), ("3.0", "3K"), ("5.0", "5K"), ("10.0", "10K"), ("21.0975", "Half"), ("42.195", "Full"), ("custom", "Custom")] %}<label class="distance-option"><input type="radio" name="distance_choice" value="{{ value }}" {% if value != "custom" and run.distance_km == value|float or value == "custom" and run.distance_km not in [0.4, 0.8, 1.0, 3.0, 5.0, 10.0, 21.0975, 42.195] %}checked{% endif %} onchange="toggleCustomDistance()"><span>{{ label }}</span></label>{% endfor %}</div></div>
+            <div class="custom-distance-wrap" id="custom-distance-wrapper" {% if run.distance_km in [0.4, 0.8, 1.0, 3.0, 5.0, 10.0, 21.0975, 42.195] %}hidden{% endif %}><div class="field"><label for="custom_distance">Custom distance in km</label><input type="number" step="0.01" min="0.01" id="custom_distance" name="custom_distance" value="{{ run.distance_km if run.distance_km not in [0.4, 0.8, 1.0, 3.0, 5.0, 10.0, 21.0975, 42.195] else '' }}"></div></div>
+            <div class="form-row"><div class="field"><label>Duration</label><div class="duration-inputs"><input type="number" min="0" name="minutes" value="{{ minutes }}" required aria-label="Minutes"><span>:</span><input type="number" min="0" max="59" name="seconds" value="{{ seconds }}" required aria-label="Seconds"></div><small>minutes &nbsp; seconds</small></div><div class="field"><label for="notes">Notes <span>(optional)</span></label><input type="text" id="notes" name="notes" value="{{ run.notes or '' }}" maxlength="500"></div></div>
+            <div class="edit-actions"><button class="primary-button" type="submit">Update run <span>↗</span></button><a class="cancel-link" href="{{ url_for('index') }}">Cancel</a></div>
+        </form>
+    </div>
+</section>
+<script>
+function toggleCustomDistance() {
+    const selected = document.querySelector('input[name="distance_choice"]:checked');
+    const wrapper = document.getElementById("custom-distance-wrapper");
+    const custom = document.getElementById("custom_distance");
+    const isCustom = selected && selected.value === "custom";
+    wrapper.hidden = !isCustom;
+    custom.required = isCustom;
+}
+toggleCustomDistance();
+</script>
+{% endblock %}

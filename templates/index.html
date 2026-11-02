@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<section class="hero reveal">
+    <div class="hero-copy">
+        <p class="eyebrow"><span class="eyebrow-line"></span> YOUR RUNNING DASHBOARD</p>
+        <h1>Make every run<br><em>count.</em></h1>
+        <p class="hero-description">A clear view of your training, your pace, and the momentum you’re building one session at a time.</p>
+        <a class="hero-cta" href="#log-run">Log a new run <span>↘</span></a>
+    </div>
+    <div class="hero-visual" aria-hidden="true">
+        <div class="route-label">LIVE / TRAINING LOG</div>
+        <svg viewBox="0 0 420 300" role="presentation">
+            <defs><linearGradient id="routeGradient" x1="0%" x2="100%"><stop offset="0%" stop-color="#b8f03b"/><stop offset="100%" stop-color="#6ac3ff"/></linearGradient></defs>
+            <path class="route-shadow" d="M37 241 C74 180, 95 249, 137 188 S181 77, 227 131 S281 243, 320 174 S354 91, 391 54" />
+            <path class="route-path" d="M37 241 C74 180, 95 249, 137 188 S181 77, 227 131 S281 243, 320 174 S354 91, 391 54" />
+            <circle class="route-dot" cx="37" cy="241" r="7"/><circle class="route-dot end-dot" cx="391" cy="54" r="7"/>
+        </svg>
+        <div class="hero-metric"><strong>{{ stats.total_distance|round(2) }}</strong><span>km logged<br>all time</span></div>
+    </div>
+</section>
+
+<section class="stats-grid reveal reveal-delay-1">
+    <article class="stat-panel stat-panel-lime">
+        <div class="stat-top"><span class="stat-label">TOTAL DISTANCE</span><span class="stat-index">01</span></div>
+        <strong>{{ "%.2f"|format(stats.total_distance) }}</strong><span class="stat-unit">KM</span>
+        <div class="stat-foot"><span class="stat-bar"><i style="width: {{ [stats.total_distance * 2, 100]|min }}%"></i></span><span>keep moving</span></div>
+    </article>
+    <article class="stat-panel">
+        <div class="stat-top"><span class="stat-label">SESSIONS LOGGED</span><span class="stat-index">02</span></div>
+        <strong>{{ stats.total_runs }}</strong><span class="stat-unit">RUNS</span>
+        <div class="stat-foot"><span class="stat-muted">Every session adds up.</span></div>
+    </article>
+    <article class="stat-panel">
+        <div class="stat-top"><span class="stat-label">AVERAGE PACE</span><span class="stat-index">03</span></div>
+        <strong class="pace-stat">{{ average_pace|replace(" /km", "") }}</strong><span class="stat-unit">/ KM</span>
+        <div class="stat-foot"><span class="stat-muted">Across your full log.</span></div>
+    </article>
+</section>
+
+<section class="workspace-grid reveal reveal-delay-2" id="log-run">
+    <div class="section-heading">
+        <p class="eyebrow"><span class="eyebrow-line"></span> BUILD YOUR LOG</p>
+        <h2>One more for the books.</h2>
+        <p>Capture the details now. Let the numbers tell the story later.</p>
+    </div>
+    <div class="run-form-card">
+        <div class="form-card-top"><span class="form-number">01</span><span class="form-status"><i></i> READY TO LOG</span></div>
+        <form action="{{ url_for('add_run') }}" method="post">
+            <div class="form-row">
+                <div class="field field-wide"><label for="run_date">Date</label><input type="date" id="run_date" name="run_date" value="{{ today }}" required></div>
+                <div class="field field-wide"><label for="type_id">Run type</label><select id="type_id" name="type_id" required>{% for type in run_types %}<option value="{{ type.id }}">{{ type.name }}</option>{% endfor %}</select></div>
+            </div>
+            <div class="field"><label>Distance</label>
+                <div class="distance-grid">
+                    {% for value, label in [("0.4", "400 m"), ("0.8", "800 m"), ("1.0", "1K"), ("3.0", "3K"), ("5.0", "5K"), ("10.0", "10K"), ("21.0975", "Half"), ("42.195", "Full"), ("custom", "Custom")] %}
+                    <label class="distance-option"><input type="radio" name="distance_choice" value="{{ value }}" {% if value == "5.0" %}checked{% endif %} onchange="toggleCustomDistance()"><span>{{ label }}</span></label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="custom-distance-wrap" id="custom-distance-wrapper" hidden><div class="field"><label for="custom_distance">Custom distance in km</label><input type="number" step="0.01" min="0.01" id="custom_distance" name="custom_distance" placeholder="e.g. 7.5"></div></div>
+            <div class="form-row">
+                <div class="field"><label>Duration</label><div class="duration-inputs"><input type="number" min="0" id="minutes" name="minutes" value="0" required aria-label="Minutes"><span>:</span><input type="number" min="0" max="59" id="seconds" name="seconds" value="30" required aria-label="Seconds"></div><small>minutes &nbsp; seconds</small></div>
+                <div class="field"><label for="notes">Notes <span>(optional)</span></label><input type="text" id="notes" name="notes" maxlength="500" placeholder="How did it feel?"></div>
+            </div>
+            <button class="primary-button" type="submit">Save run <span>↗</span></button>
+        </form>
+    </div>
+</section>
+
+<section class="history-section reveal reveal-delay-3">
+    <div class="history-heading">
+        <div><p class="eyebrow"><span class="eyebrow-line"></span> YOUR MOVEMENT</p><h2>Run history <sup>{{ stats.total_runs }}</sup></h2></div>
+        {% if runs %}<div class="history-tools"><div class="search-box"><span>⌕</span><input id="run-search" type="search" placeholder="Search runs..." aria-label="Search runs"></div><select id="type-filter" aria-label="Filter by run type"><option value="">All types</option>{% for type in run_types %}<option value="{{ type.name }}">{{ type.name }}</option>{% endfor %}</select></div>{% endif %}
+    </div>
+    {% if runs %}
+    <div class="run-list" id="run-list">
+        {% for run in runs %}
+        <article class="run-item" data-search="{{ run.run_date }} {{ run.type_name }} {{ run.notes or '' }}" data-type="{{ run.type_name }}">
+            <div class="run-date">{% set date_parts = format_date_parts(run.run_date) %}<span>{{ date_parts[0] }}</span><strong>{{ date_parts[1] }}</strong><small>{{ date_parts[2] }}</small></div>
+            <div class="run-main"><div class="run-title-row"><h3>{{ run.type_name }}</h3><span class="type-dot"></span></div><p>{{ run.notes or "No notes added for this session." }}</p></div>
+            <div class="run-stat"><span>Distance</span><strong>{{ "%.2f"|format(run.distance_km) }} <small>km</small></strong></div>
+            <div class="run-stat"><span>Duration</span><strong>{{ format_duration(run.duration_seconds) }}</strong></div>
+            <div class="run-stat pace-column"><span>Pace</span><strong>{{ calculate_pace(run.duration_seconds, run.distance_km)|replace(" /km", "") }} <small>/km</small></strong></div>
+            <div class="run-actions"><a href="{{ url_for('edit_run', id=run.id) }}" aria-label="Edit {{ run.run_date }}">↗</a><form method="post" action="{{ url_for('delete_run', id=run.id) }}"><button type="submit" onclick="return confirm('Delete this run?')" aria-label="Delete {{ run.run_date }}">×</button></form></div>
+        </article>
+        {% endfor %}
+    </div>
+    <p class="no-results" id="no-results" hidden>No runs match that search.</p>
+    {% else %}
+    <div class="empty-state"><div class="empty-icon">✦</div><h3>Your next run starts here.</h3><p>Log your first session above and your progress will appear in this space.</p><a href="#log-run" class="text-link">Log a run <span>↘</span></a></div>
+    {% endif %}
+</section>
+<script>
+function toggleCustomDistance() {
+    const selected = document.querySelector('input[name="distance_choice"]:checked');
+    const wrapper = document.getElementById("custom-distance-wrapper");
+    const custom = document.getElementById("custom_distance");
+    const isCustom = selected && selected.value === "custom";
+    wrapper.hidden = !isCustom;
+    custom.required = isCustom;
+}
+const search = document.getElementById("run-search");
+const filter = document.getElementById("type-filter");
+const noResults = document.getElementById("no-results");
+function filterRuns() {
+    const query = (search.value || "").toLowerCase();
+    const type = filter.value;
+    let visible = 0;
+    document.querySelectorAll(".run-item").forEach((item) => {
+        const match = item.dataset.search.toLowerCase().includes(query) && (!type || item.dataset.type === type);
+        item.hidden = !match;
+        if (match) visible++;
+    });
+    noResults.hidden = visible !== 0;
+}
+if (search) { search.addEventListener("input", filterRuns); filter.addEventListener("change", filterRuns); }
+</script>
+{% endblock %}
